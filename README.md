@@ -109,13 +109,21 @@ Option selected: 1
 
 ## Project Structure 📁
 weather-app/
+
 ├── __pycache__/          # Python cache files
+
 ├── weather_env/          # Virtual environment folder
+
 ├── .gitignore            # Git ignore file for sensitive info like virtual environments
+
 ├── config.py             # API key configuration (do not expose sensitive info)
+
 ├── main.py               # Main Python script containing all functionality
+
 ├── pre-release.py        # Additional script for pre-release testing (if applicable)
+
 ├── requirements.txt      # List of Python dependencies
+
 └── README.md             # Project documentation
 
 
