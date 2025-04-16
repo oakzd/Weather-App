@@ -1,0 +1,7 @@
+# Version history
+# Format: version_number - date - description of the changes
+
+1.0.0 - 2025-04-15 - Initial release and commit of Weather Checker app.
+1.0.1 - 2025-04-15 - updated readme file syntax
+1.0.2 - 2025-04-15 - updated readme file with Version Information
+1.1.0 - 2025-04-15 - updated main.py with a function to grab version from version.txt

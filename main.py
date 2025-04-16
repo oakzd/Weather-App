@@ -17,6 +17,18 @@ API_KEY = config.API_KEY  # API key for authentication
 BASE_URL = "http://api.openweathermap.org/data/2.5/weather"  # Base URL for current weather
 FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast"  # Base URL for forecast API
 
+#grabs the latest version and displays here dynamically
+def grab_version():
+    # Read all lines from version.txt
+    with open("version.txt","r") as file:
+        lines = file.readlines()
+    for line in reversed(lines):
+        if line.strip() and not line.strip().startswith('#'):
+            if "-" in line:
+                latest_version = line.split("-")[0]
+                break
+    return latest_version
+
 # Helper function to calculate min and max temperatures from weather data
 def grab_min_max_temp(weather_data):
     """
@@ -151,6 +163,8 @@ def main():
     Main program loop to interact with the user
     Allows the user to choose between current weather, 3-day forecast, or exit
     """
+    #display version here
+    print(f"App Version: {grab_version()}")
     while True:
         user_option = input(f"Hi! select an option:"
                             "\n 1: Current Weather"

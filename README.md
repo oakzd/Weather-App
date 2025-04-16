@@ -7,6 +7,7 @@ Experience a vibrant, modern terminal interface for all your weather-checking ne
 
 ## Table of Contents 📚
 
+- [Version Information 🗂️](#version-information-)
 - [Features ✨](#features-)
 - [Installation 🛠️](#installation-)
 - [Usage 🚀](#usage-)
@@ -16,6 +17,20 @@ Experience a vibrant, modern terminal interface for all your weather-checking ne
 - [Acknowledgments 🙏](#acknowledgments-)
 
 ---
+
+## Version Information 🗂️
+For a detailed history of updates and changes, check out the version.txt file. It contains all version entries, including feature additions, improvements, and fixes.
+
+### Dynamic Version Integration
+The latest version is automatically fetched from version.txt via the 
+grab_version function (inside of main.py) and seamlessly integrated. This ensures consistency and reduces manual effort the application will always stay up-to-date with the latest version information.
+
+### Best Practices for Versioning
+
+I am using the Semantic versioning (major.minor.patch)
+- **Major** : Introduces significant changes
+- **Minor**: Add new features without breaking existing ones.
+- **Patch**: Fix bugs or make minor adjustments.
 
 ## Features ✨
 
@@ -76,7 +91,7 @@ pip install -r requirements.txt
 This will install all the necessary dependencies, including:
 - **Requests** : for making API calls
 - **Tabulate**: for creating clean, formatted tables
-- **Colorama**:: For colorful terminal output
+- **Colorama**: For colorful terminal output
 
 
 ### Configure the Project
@@ -88,6 +103,7 @@ API_KEY = "YOUR_OPENWEATHER_API_KEY"
 Replace "YOUR_OPENWEATHER_API_KEY" with your actual API key. 
 Keep this file secure and avoid committing sensitive info to public repositories.
 
+---
 ## Usage 🚀
 With everything set up, run the application from your terminal:
 ```bash
@@ -102,10 +118,11 @@ Hi! select an option:
 
 Option selected: 1
 
-
+---
 ### Sample Output
 ![Sample Output](assets/sampleoutput.png)
 
+---
 
 ## Project Structure 📁
 weather-app/
@@ -126,8 +143,8 @@ weather-app/
 
 └── README.md             # Project documentation
 
-
-## Project Structure 🤝
+---
+## Contributing 🤝
 
 Contributions, bug fixes, and feature requests are welcome! To contribute:
 1. Fork the repository.
@@ -147,8 +164,11 @@ git push origin feature/YourFeature
 
 Please adhere to the existing code style and include proper documentation/comments with your modifications.
 
+---
 ## License 📄
 This project is licensed under the MIT License.
+
+---
 
 ## Acknowledgments 🙏
 - **OpenWeatherMap** : For providing the excellent weather API.
