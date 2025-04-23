@@ -1,4 +1,4 @@
-# Weather Checker ☀️🌧️ Version 1.0.0
+# App Version: 1.2.0 
 **Weather Checker** is a command-line weather application that fetches real-time weather data and a 3-day forecast from the [OpenWeather API](https://openweathermap.org/api). It displays data in beautifully formatted, colorful tables enhanced with emojis using [Colorama](https://github.com/tartley/colorama) and [Tabulate](https://github.com/astanin/python-tabulate).
 
 Experience a vibrant, modern terminal interface for all your weather-checking needs!
@@ -23,7 +23,8 @@ For a detailed history of updates and changes, check out the version.txt file. I
 
 ### Dynamic Version Integration
 The latest version is automatically fetched from version.txt via the 
-grab_version function (inside of main.py) and seamlessly integrated. This ensures consistency and reduces manual effort the application will always stay up-to-date with the latest version information.
+grab_version function (inside of main.py) and seamlessly integrated into the main.py and also README.md file. 
+This ensures consistency and reduces manual effort the application will always stay up-to-date with the latest version information.
 
 ### Best Practices for Versioning
 

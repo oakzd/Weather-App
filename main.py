@@ -9,7 +9,7 @@ from tabulate import tabulate
 from colorama import Fore, Style, Back, init
 # Initialize Colorama for auto-reset after each print statement
 init(autoreset=True)
-import sys
+import sys     # Provides system-related functions like exiting the program
 import config  # Import the config file to access API keys
 
 # Define API constants for OpenWeather API
@@ -17,15 +17,35 @@ API_KEY = config.API_KEY  # API key for authentication
 BASE_URL = "http://api.openweathermap.org/data/2.5/weather"  # Base URL for current weather
 FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast"  # Base URL for forecast API
 
-#grabs the latest version and displays here dynamically
+
+# Function to update README.md dynamically with the latest app version
+def update_readme():
+    """
+    Reads README.md, removes the previous version line, and prepends the latest version.
+    This ensures the README file always reflects the most recent app version without stacking versions.
+    """
+    with open("README.md","r",encoding='utf-8') as file:
+        file_content = file.readlines() # Read file content as a list of lines
+        latest_version = grab_version() # Get the latest version from version.txt
+    # rewrite the readme file with the version on top
+    with open("README.md","w",encoding='utf-8') as file:
+        file_content = file_content[1:] # Remove the first line (previous version entry)
+        file_content = "".join(file_content) # Convert list back into a string
+        file.write("# App Version: " + latest_version +"\n" + file_content) # Write updated version at the top
+
+
+# Function to extract the latest version from version.txt
 def grab_version():
-    # Read all lines from version.txt
+    """
+    Reads version.txt, identifies the most recent version number, and returns it.
+    Skips empty lines and comments, ensuring only valid version entries are considered.
+    """
     with open("version.txt","r") as file:
-        lines = file.readlines()
+        lines = file.readlines() # Read file content line by line
     for line in reversed(lines):
-        if line.strip() and not line.strip().startswith('#'):
-            if "-" in line:
-                latest_version = line.split("-")[0]
+        if line.strip() and not line.strip().startswith('#'): # Ignore empty lines and comments
+            if "-" in line: # Expected format: 'version-number'
+                latest_version = line.split("-")[0] # Extract the version number before '-'
                 break
     return latest_version
 
@@ -163,6 +183,8 @@ def main():
     Main program loop to interact with the user
     Allows the user to choose between current weather, 3-day forecast, or exit
     """
+    #Update READM.md with APP version
+    update_readme()
     #display version here
     print(f"App Version: {grab_version()}")
     while True:
