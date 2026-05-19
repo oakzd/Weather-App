@@ -1,3 +1,5 @@
 # .gitignore
 config.py
 pre-release.py
+weather_env/
+__pycache__/

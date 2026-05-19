@@ -1,21 +1,78 @@
+# Use project venv when PATH points at a Python without dependencies (common on Windows Git Bash)
+import sys
+from pathlib import Path
+
+_VENV_PYTHON = Path(__file__).resolve().parent / "weather_env" / "Scripts" / "python.exe"
+
+
+def _reexec_with_venv_if_needed():
+    if not _VENV_PYTHON.is_file():
+        return
+    try:
+        import requests  # noqa: F401
+    except ImportError:
+        if Path(sys.executable).resolve() != _VENV_PYTHON.resolve():
+            import os
+            os.execv(str(_VENV_PYTHON), [str(_VENV_PYTHON), *sys.argv])
+        print(
+            "Missing dependencies. Run:\n"
+            f"  {_VENV_PYTHON} -m pip install -r requirements.txt",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+
+_reexec_with_venv_if_needed()
+
 # Import required libraries
 # Requests - to make API calls
 # Datetime - to format timestamps into readable dates
 # Tabulate - to format data into tables
 # Colorama - to add color and styling to terminal outputs
 import requests
+from collections import defaultdict
 from datetime import datetime
+from urllib.parse import quote
 from tabulate import tabulate
 from colorama import Fore, Style, Back, init
 # Initialize Colorama for auto-reset after each print statement
 init(autoreset=True)
-import sys     # Provides system-related functions like exiting the program
 import config  # Import the config file to access API keys
 
 # Define API constants for OpenWeather API
 API_KEY = config.API_KEY  # API key for authentication
-BASE_URL = "http://api.openweathermap.org/data/2.5/weather"  # Base URL for current weather
-FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast"  # Base URL for forecast API
+BASE_URL = "https://api.openweathermap.org/data/2.5/weather"  # Base URL for current weather
+FORECAST_BASE_URL = "https://api.openweathermap.org/data/2.5/forecast"  # Base URL for forecast API
+REQUEST_TIMEOUT = 10  # Seconds before API requests time out
+
+
+def kelvin_to_fahrenheit(kelvin):
+    """Convert Kelvin to rounded Fahrenheit."""
+    return round((kelvin - 273.15) * 9 / 5 + 32)
+
+
+def _build_url(base, city):
+    """Build an OpenWeather API URL with an encoded city name."""
+    return f"{base}?q={quote(city.strip())}&appid={API_KEY}"
+
+
+def _fetch_json(url):
+    """GET url and return parsed JSON, or None on network/parse failure."""
+    try:
+        response = requests.get(url, timeout=REQUEST_TIMEOUT)
+    except requests.RequestException as e:
+        print(f"{Fore.RED}❌ Network error: {e}")
+        return None
+    try:
+        return response.json()
+    except ValueError:
+        print(f"{Fore.RED}❌ Invalid response from weather service.")
+        return None
+
+
+def _api_ok(data):
+    """Return True if the API response indicates success (cod 200)."""
+    return str(data.get("cod")) == "200"
 
 
 # Function to extract the latest version from version.txt
@@ -36,14 +93,28 @@ def grab_version():
 # Helper function to calculate min and max temperatures from weather data
 def grab_min_max_temp(weather_data):
     """
-    Extract minimum and maximum temperatures from the weather data
-    Convert from Kelvin to Fahrenheit for readability
+    Extracts the minimum and maximum temperatures from the given weather data,
+    converts them from Kelvin to Fahrenheit, and returns them as a tuple.
+
+    Args:
+        weather_data (dict): The weather data dictionary, expected to contain 'main' with 'temp_min' and 'temp_max'.
+
+    Returns:
+        tuple: (min_temperature_fahrenheit, max_temperature_fahrenheit)
     """
-    min_temp_kalvin = weather_data['main']['temp_min']
-    min_temp_actual = round((min_temp_kalvin - 273.15) * 9/5 + 32)  # Convert to Fahrenheit
-    max_temp_kalvin = weather_data['main']['temp_max']
-    max_temp_actual = round((max_temp_kalvin - 273.15) * 9/5 + 32)  # Convert to Fahrenheit
-    return min_temp_actual, max_temp_actual
+    # Use get with defaults and provide error handling in case of bad input
+    try:
+        main_data = weather_data.get('main', {})
+        min_temp_kelvin = main_data.get('temp_min')
+        max_temp_kelvin = main_data.get('temp_max')
+        if min_temp_kelvin is None or max_temp_kelvin is None:
+            raise ValueError("Temperature data missing from weather_data['main']")
+        min_temp_f = kelvin_to_fahrenheit(min_temp_kelvin)
+        max_temp_f = kelvin_to_fahrenheit(max_temp_kelvin)
+        return min_temp_f, max_temp_f
+    except Exception as e:
+        print(f"{Fore.RED}Error extracting min/max temperature: {e}")
+        return None, None
 
 # Helper function to convert Unix timestamps into readable date strings
 def convert_date_time(unix_timestamp):
@@ -61,63 +132,68 @@ def get_three_day_forecast(city_name):
     Fetch the 3-day weather forecast for the given city
     Display the forecast as a formatted table with colorful output
     """
-    # Build the Forecast API URL and make the API call
-    url = f"{FORECAST_BASE_URL}?q={city_name}&appid={API_KEY}"
-    response = requests.get(url)  # Perform API call
-    forecast_data = response.json()  # Parse JSON response into Python dictionary
+    forecast_data = _fetch_json(_build_url(FORECAST_BASE_URL, city_name))
+    if forecast_data is None:
+        return
 
-    # Build the Current Weather API URL for additional data
-    weather_url = f"{BASE_URL}?q={city_name}&appid={API_KEY}"
-    weather_response = requests.get(weather_url)  # Perform API call
-    weather_data = weather_response.json()  # Parse JSON response into Python dictionary
-
-    # Handle API errors gracefully
-    if forecast_data.get("cod") != "200":
+    if not _api_ok(forecast_data):
         forecast_error_message = forecast_data.get("message", "Unknown error here")
         print(f"{Fore.RED}❌ Error: {forecast_error_message}")
         return
 
-    # Prepare table rows for Tabulate
-    table_data = []
-    # Track unique days to ensure only three days are processed
-    three_days_list = []
-
-    # Iterate through the forecast data, grouping by date
-    for entry_date in forecast_data['list']:
-        date = entry_date['dt_txt'].split(" ")[0]  # Extract date (YYYY-MM-DD)
-        if date in three_days_list:  # Skip if this date is already processed
+    days = defaultdict(list)
+    for entry in forecast_data.get("list", []):
+        dt_txt = entry.get("dt_txt")
+        if not dt_txt:
             continue
-        three_days_list.append(date)  # Add unique date to the list
+        date = dt_txt.split(" ")[0]
+        days[date].append(entry)
 
-        # Extract relevant weather data for this forecast interval
-        forecast_date = entry_date['dt']
-        forecast_city = forecast_data.get('city', {}).get('name', "Unknown City")  # Get city name
-        forecast_country = forecast_data.get('city', {}).get('country', "Unknown Country")  # Get country code
-        forecast_location = f"{forecast_city}, {forecast_country}"  # Combine city and country into one string
+    forecast_city = forecast_data.get("city", {}).get("name", "Unknown City")
+    forecast_country = forecast_data.get("city", {}).get("country", "Unknown Country")
+    forecast_location = f"{forecast_city}, {forecast_country}"
 
-        min_temp_actual, max_temp_actual = grab_min_max_temp(weather_data)  # Fetch min and max temperatures
-        weather_condition = entry_date['weather'][0]['description']  # Fetch weather condition
-        precipitation = entry_date.get('pop', 0) * 100  # Fetch precipitation probability
-        humidity = entry_date['main']['humidity']  # Fetch humidity percentage
+    table_data = []
+    for date in sorted(days.keys())[:3]:
+        entries = days[date]
+        first_entry = entries[0]
 
-        # Add row data to the table with colors and emojis
+        min_temps = []
+        max_temps = []
+        for entry in entries:
+            main = entry.get("main", {})
+            temp_min = main.get("temp_min")
+            temp_max = main.get("temp_max")
+            if temp_min is not None:
+                min_temps.append(kelvin_to_fahrenheit(temp_min))
+            if temp_max is not None:
+                max_temps.append(kelvin_to_fahrenheit(temp_max))
+
+        if not min_temps or not max_temps:
+            continue
+
+        min_temp_actual = min(min_temps)
+        max_temp_actual = max(max_temps)
+        forecast_date = first_entry["dt"]
+        weather_condition = first_entry["weather"][0]["description"]
+        precipitation = max(entry.get("pop", 0) for entry in entries) * 100
+        humidity = first_entry["main"]["humidity"]
+
         table_data.append([
             f"{Fore.WHITE}📅 {convert_date_time(forecast_date)}",
-            f"{Fore.CYAN}📍 {forecast_location}",                             
+            f"{Fore.CYAN}📍 {forecast_location}",
             f"{Fore.BLUE}🌡️  ↘️  {min_temp_actual}°F",
-            f"{Fore.BLUE}🌡️  ↗️  {max_temp_actual}°F ",                               
-            f"{Fore.WHITE}{weather_condition} ☁️ ",                            
-            f"{Fore.BLUE}{precipitation:.1f}% 🌧️ ",                            
-            f"{Fore.MAGENTA}{humidity}% 💧{Style.RESET_ALL}"                                   
+            f"{Fore.BLUE}🌡️  ↗️  {max_temp_actual}°F ",
+            f"{Fore.WHITE}{weather_condition} ☁️ ",
+            f"{Fore.BLUE}{precipitation:.1f}% 🌧️ ",
+            f"{Fore.MAGENTA}{humidity}% 💧{Style.RESET_ALL}",
         ])
 
-        # Exit the loop after processing 3 unique days
-        if len(three_days_list) == 3:
-            break
+    if not table_data:
+        print(f"{Fore.RED}❌ Error: No forecast data available.")
+        return
 
-    # Define table headers for Tabulate
     weather_headers = ["Date", "Location", "Min Temp", "Max Temp", "Condition", "Precipitation", "Humidity"]
-    # Print the forecast table
     print(tabulate(table_data, headers=weather_headers, tablefmt="grid"))
 
 # Function to fetch and display the current weather
@@ -126,20 +202,20 @@ def get_weather(city_name):
     Fetch the current weather for the given city
     Display the weather data as a formatted table with colorful output
     """
-    url = f"{BASE_URL}?q={city_name}&appid={API_KEY}"  # Build API URL
-    response = requests.get(url)  # Perform API call
-    weather_data = response.json()  # Parse JSON response into Python dictionary
+    weather_data = _fetch_json(_build_url(BASE_URL, city_name))
+    if weather_data is None:
+        return
 
-    # Handle API errors gracefully
-    if weather_data.get("cod") != 200:
+    if not _api_ok(weather_data):
         weather_error_message = weather_data.get("message", "Unknown error here")
         print(f"{Fore.RED}❌ Error: {weather_error_message}")
         return
 
-    # Extract relevant weather data
     weather_date = weather_data['dt']  # Get the Unix timestamp for the current weather
     weather_location = weather_data['name']  # Get city name
-    min_temp_actual, max_temp_actual = grab_min_max_temp(weather_data)  # Fetch min and max temperatures
+    min_temp_actual, max_temp_actual = grab_min_max_temp(weather_data)
+    if min_temp_actual is None or max_temp_actual is None:
+        return
     weather_condition = weather_data['weather'][0]['description']  # Fetch weather condition
     humidity = weather_data['main']['humidity']  # Fetch humidity percentage
 
