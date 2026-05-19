@@ -18,22 +18,6 @@ BASE_URL = "http://api.openweathermap.org/data/2.5/weather"  # Base URL for curr
 FORECAST_BASE_URL = "http://api.openweathermap.org/data/2.5/forecast"  # Base URL for forecast API
 
 
-# Function to update README.md dynamically with the latest app version
-def update_readme():
-    """
-    Reads README.md, removes the previous version line, and prepends the latest version.
-    This ensures the README file always reflects the most recent app version without stacking versions.
-    """
-    with open("README.md","r",encoding='utf-8') as file:
-        file_content = file.readlines() # Read file content as a list of lines
-        latest_version = grab_version() # Get the latest version from version.txt
-    # rewrite the readme file with the version on top
-    with open("README.md","w",encoding='utf-8') as file:
-        file_content = file_content[1:] # Remove the first line (previous version entry)
-        file_content = "".join(file_content) # Convert list back into a string
-        file.write("# App Version: " + latest_version +"\n" + file_content) # Write updated version at the top
-
-
 # Function to extract the latest version from version.txt
 def grab_version():
     """
@@ -183,9 +167,6 @@ def main():
     Main program loop to interact with the user
     Allows the user to choose between current weather, 3-day forecast, or exit
     """
-    #Update READM.md with APP version
-    update_readme()
-    #display version here
     print(f"App Version: {grab_version()}")
     while True:
         user_option = input(f"Hi! select an option:"

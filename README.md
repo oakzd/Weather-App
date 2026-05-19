@@ -21,10 +21,8 @@ Experience a vibrant, modern terminal interface for all your weather-checking ne
 ## Version Information 🗂️
 For a detailed history of updates and changes, check out the version.txt file. It contains all version entries, including feature additions, improvements, and fixes.
 
-### Dynamic Version Integration
-The latest version is automatically fetched from version.txt via the 
-grab_version function (inside of main.py) and seamlessly integrated into the main.py and also README.md file. 
-This ensures consistency and reduces manual effort the application will always stay up-to-date with the latest version information.
+### Version at startup
+The latest version is read from `version.txt` via `grab_version()` in `main.py` and printed when you run the app. Update `version.txt` (and the App Version line at the top of this README) when you release a new version.
 
 ### Best Practices for Versioning
 
